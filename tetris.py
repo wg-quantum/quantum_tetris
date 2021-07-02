@@ -1,7 +1,7 @@
 # -*- coding:utf-8 -*-
-import tkinter as tk
 import random
 import time
+import tkinter as tk
 
 # 定数
 BLOCK_SIZE = 25  # ブロックの縦横サイズpx
@@ -16,7 +16,14 @@ base_label = "N"
 
 opperand_labels = ["0", "1", "+", "-", "i", "-i"]
 opperator_labels = ["H", "X", "Z"]
-label_color_dict = {"0":"red", "1": "blue", "+": "green", "-": "orange", "i": "black", "-i": "pink"}
+label_color_dict = {
+    "0": "red",
+    "1": "blue",
+    "+": "green",
+    "-": "orange",
+    "i": "black",
+    "-i": "pink",
+}
 
 # ルール
 # (1) 同じ状態が隣り合うと消える(ぷよぷよ形式)
@@ -39,41 +46,41 @@ label_color_dict = {"0":"red", "1": "blue", "+": "green", "-": "orange", "i": "b
 # 連鎖の過程を表示できるように
 
 # ブロックを構成する正方形のクラス
-class TetrisSquare():
+class TetrisSquare:
     def __init__(self, x=0, y=0, color=base_color, label=base_label):
-        '１つの正方形を作成'
+        "１つの正方形を作成"
         self.x = x
         self.y = y
         self.color = color
         self.label = label
 
     def set_cord(self, x, y):
-        '正方形の座標を設定'
+        "正方形の座標を設定"
         self.x = x
         self.y = y
 
     def get_cord(self):
-        '正方形の座標を取得'
+        "正方形の座標を取得"
         return int(self.x), int(self.y)
 
     def set_color(self, color):
-        '正方形の色を設定'
+        "正方形の色を設定"
         self.color = color
 
     def get_color(self):
-        '正方形の色を取得'
+        "正方形の色を取得"
         return self.color
-    
+
     def set_label(self, label):
-        '正方形の量子状態を設定'
+        "正方形の量子状態を設定"
         self.label = label
 
     def get_label(self):
-        '正方形の量子状態を取得'
+        "正方形の量子状態を取得"
         return self.label
-    
+
     def get_moved_cord(self, direction):
-        '移動後の正方形の座標を取得'
+        "移動後の正方形の座標を取得"
 
         # 移動前の正方形の座標を取得
         x, y = self.get_cord()
@@ -87,12 +94,12 @@ class TetrisSquare():
             return x, y + 1
         else:
             return x, y
-        
+
 
 # テトリス画面を描画するキャンバスクラス
 class TetrisCanvas(tk.Canvas):
     def __init__(self, master, field):
-        'テトリスを描画するキャンバスを作成'
+        "テトリスを描画するキャンバスを作成"
 
         canvas_width = field.get_width() * BLOCK_SIZE
         canvas_height = field.get_height() * BLOCK_SIZE
@@ -112,16 +119,14 @@ class TetrisCanvas(tk.Canvas):
                 y1 = y * BLOCK_SIZE
                 y2 = (y + 1) * BLOCK_SIZE
                 self.create_rectangle(
-                    x1, y1, x2, y2,
-                    outline="white", width=1,
-                    fill=square.get_color()
+                    x1, y1, x2, y2, outline="white", width=1, fill=square.get_color()
                 )
 
         # 一つ前に描画したフィールドを設定
         self.before_field = field
 
     def update(self, field, block):
-        'テトリス画面をアップデート'
+        "テトリス画面をアップデート"
 
         # 描画用のフィールド（フィールド＋ブロック）を作成
         new_field = TetrisField()
@@ -160,28 +165,75 @@ class TetrisCanvas(tk.Canvas):
                 # (x,y)座標が前回描画時から変化ない場合は描画しない
                 before_square = self.before_field.get_square(x, y)
                 before_color = before_square.get_color()
-                if(new_color == before_color):
+                if new_color == before_color:
                     continue
 
                 x1 = x * BLOCK_SIZE
                 x2 = (x + 1) * BLOCK_SIZE
                 y1 = y * BLOCK_SIZE
                 y2 = (y + 1) * BLOCK_SIZE
-                x_c = (x1+x2)/2
-                y_c = (y1+y2)/2
+                x_c = (x1 + x2) / 2
+                y_c = (y1 + y2) / 2
                 # フィールドの各位置の色で長方形描画
                 self.create_rectangle(
-                    x1, y1, x2, y2,
-                    outline="white", width=1, fill=new_color
+                    x1, y1, x2, y2, outline="white", width=1, fill=new_color
                 )
                 if new_color != base_color:
-                    self.create_text((x_c,y_c), text=new_label, fill="white")
+                    self.create_text((x_c, y_c), text=new_label, fill="white")
 
         # 前回描画したフィールドの情報を更新
         self.before_field = new_field
 
+    def update_debug(self, field):
+        "連鎖部分をアップデート"
+
+        # debug_label(field)
+        new_field = TetrisField()
+        # 描画用のフィールドを用いてキャンバスに描画
+        for y in range(field.get_height()):
+            for x in range(field.get_width()):
+                # (x,y)座標のフィールドの色を取得
+                square = field.get_square(x, y)
+                color = square.get_color()
+                label = square.get_label()
+
+                new_square = new_field.get_square(x, y)
+                new_square.set_color(color)
+                new_square.set_label(label)
+
+                if y > 10:
+                    print(x, y, label, color)
+
+                x1 = x * BLOCK_SIZE
+                x2 = (x + 1) * BLOCK_SIZE
+                y1 = y * BLOCK_SIZE
+                y2 = (y + 1) * BLOCK_SIZE
+                x_c = (x1 + x2) / 2
+                y_c = (y1 + y2) / 2
+                # フィールドの各位置の色で長方形描画
+                self.create_rectangle(
+                    x1, y1, x2, y2, outline="white", width=1, fill=color
+                )
+                if color != base_color:
+                    self.create_text((x_c, y_c), text=label, fill="white")
+
+        rand_color = random.choice(["black", "white"])
+        rand_label = random.choice(["A", "B"])
+
+        self.create_rectangle(
+            0,
+            19 * BLOCK_SIZE,
+            BLOCK_SIZE,
+            20 * BLOCK_SIZE,
+            outline="white",
+            width=1,
+            fill=rand_color,
+        )
+        self.create_text((x_c, y_c), text=rand_label, fill="white")
+
+
 # 積まれたブロックの情報を管理するフィールドクラス
-class TetrisField():
+class TetrisField:
     def __init__(self):
         self.width = FIELD_WIDTH
         self.height = FIELD_HEIGHT
@@ -194,35 +246,37 @@ class TetrisField():
                 self.squares.append(TetrisSquare(x, y, base_color, base_label))
 
     def get_width(self):
-        'フィールドの正方形の数（横方向）を取得'
+        "フィールドの正方形の数（横方向）を取得"
 
         return self.width
 
     def get_height(self):
-        'フィールドの正方形の数（縦方向）を取得'
+        "フィールドの正方形の数（縦方向）を取得"
 
         return self.height
 
     def get_squares(self):
-        'フィールドを構成する正方形のリストを取得'
+        "フィールドを構成する正方形のリストを取得"
 
         return self.squares
 
     def get_square(self, x, y):
-        '指定した座標の正方形を取得'
+        "指定した座標の正方形を取得"
 
         return self.squares[y * self.width + x]
 
     def judge_game_over(self, block):
-        'ゲームオーバーかどうかを判断'
+        "ゲームオーバーかどうかを判断"
 
         # フィールド上で既に埋まっている座標の集合作成
-        no_empty_cord = set(square.get_cord() for square
-                            in self.get_squares() if square.get_color() != base_color)
+        no_empty_cord = set(
+            square.get_cord()
+            for square in self.get_squares()
+            if square.get_color() != base_color
+        )
 
         # ブロックがある座標の集合作成
-        block_cord = set(square.get_cord() for square
-                         in block.get_squares())
+        block_cord = set(square.get_cord() for square in block.get_squares())
 
         # ブロックの座標の集合と
         # フィールドの既に埋まっている座標の集合の積集合を作成
@@ -237,22 +291,25 @@ class TetrisField():
         return ret
 
     def judge_can_move(self, block, direction):
-        '指定した方向にブロックを移動できるかを判断'
+        "指定した方向にブロックを移動できるかを判断"
 
         # フィールド上で既に埋まっている座標の集合作成
-        no_empty_cord = set(square.get_cord() for square
-                            in self.get_squares() if square.get_color() != base_color)
+        no_empty_cord = set(
+            square.get_cord()
+            for square in self.get_squares()
+            if square.get_color() != base_color
+        )
 
         # 移動後のブロックがある座標の集合作成
-        move_block_cord = set(square.get_moved_cord(direction) for square
-                              in block.get_squares())
+        move_block_cord = set(
+            square.get_moved_cord(direction) for square in block.get_squares()
+        )
 
         # フィールドからはみ出すかどうかを判断
         for x, y in move_block_cord:
 
             # はみ出す場合は移動できない
-            if x < 0 or x >= self.width or \
-                    y < 0 or y >= self.height:
+            if x < 0 or x >= self.width or y < 0 or y >= self.height:
                 return False
 
         # 移動後のブロックの座標の集合と
@@ -268,7 +325,7 @@ class TetrisField():
         return ret
 
     def fix_block(self, block):
-        'ブロックを固定してフィールドに追加'
+        "ブロックを固定してフィールドに追加"
 
         for square in block.get_squares():
             # ブロックに含まれる正方形の座標と色を取得
@@ -280,8 +337,7 @@ class TetrisField():
             field_square = self.get_square(x, y)
             field_square.set_color(color)
             field_square.set_label(label)
-            
-            
+
     # def delete_line(self):
     #     '行の削除を行う'
 
@@ -306,17 +362,32 @@ class TetrisField():
     #             for x in range(self.width):
     #                 square = self.get_square(x, 0)
     #                 square.set_color(base_color)
-        
+
+    def judge_can_fall(self):
+        "フィールド上の全ブロックのういずれかが下に移動できるか判定"
+        can_fall = False
+        for y in range(self.height - 2, 0, -1):
+            for x in range(self.width):
+                square = self.get_square(x, y)
+                # ブロックがあった場合は下にブロックがあるかチェック
+                if square.get_color() != base_color:
+                    square_below = self.get_square(x, y + 1)
+                    if square_below.get_color() == base_color:
+                        can_fall = True
+                        break
+
+        return can_fall
 
     def down_after_fix(self):
-        for y in range(self.height-2, 0, -1):
+        "フィールド上のブロックで下に落とせるものは落とす"
+        for y in range(self.height - 2, 0, -1):
             for x in range(self.width):
                 square = self.get_square(x, y)
                 if square.get_color() == base_color:
                     continue
                 # ブロックの下にスペースがあれば落としていく
-                for down_y in range(y+1, FIELD_HEIGHT):
-                    square_below =  self.get_square(x, down_y)
+                for down_y in range(y + 1, FIELD_HEIGHT):
+                    square_below = self.get_square(x, down_y)
                     if square_below.get_color() == base_color:
                         square_below.set_color(square.get_color())
                         square_below.set_label(square.get_label())
@@ -326,139 +397,167 @@ class TetrisField():
                     else:
                         break
 
-    def delete_same(self):
+    def get_deletable_block(self):
+        "消せるブロックのオプジェクトのリストを取得"
+        # 重複ありのリストになっているが今のところ実害なし
+        # 今のところは2個で消えるが今後3個以上で消えるパターンも検討
+        squares_to_delete = []
+        for y in range(self.height):
+            for x in range(self.width):
+                square = self.get_square(x, y)
+                if square.get_color() == base_color:
+                    continue
+                elif square.get_label() not in opperand_labels:
+                    continue
+                # 右端の場合以外
+                if x != FIELD_WIDTH - 1:
+                    square_r = self.get_square(x + 1, y)
+                    if square.get_label() == square_r.get_label():
+                        squares_to_delete.extend([square, square_r])
+                # 下端の場合以外
+                if y != FIELD_HEIGHT - 1:
+                    square_up = self.get_square(x, y + 1)
+                    if square.get_label() == square_up.get_label():
+                        squares_to_delete.extend([square, square_up])
+        return squares_to_delete
+
+    def exist_deletale(self):
+        "消せるブロックがあるか確認"
+        return len(self.get_deletable_block()) > 0
+
+    def delete_same_step(self):
+        "消せるブロックがあれば消す(連鎖はしない)"
+        squares_to_delete = self.get_deletable_block()
+        for square in set(squares_to_delete):
+            square.set_color(base_color)
+            square.set_label(base_label)
+
+    def delete_same_chain(self):
+        "消せるブロックがあれば消す(連鎖する)"
         # 隣り合った量子状態が同じ場合消す
         # 全ブロックに対してペアの隣接ブロックを調べていく
-        
+
         # 消した後に落下、さらに消せるところがないかチェックを変化がなくなるまでチェック
         while True:
             # 消すべき場所を取得
-            squares_to_delete = []
-            for y in range(self.height):
-                for x in range(self.width):
-                    square = self.get_square(x, y)
-                    if square.get_color() == base_color:
-                        continue
-                    elif square.get_label() not in opperand_labels:
-                        continue
-                    # 右端の場合以外
-                    if x != FIELD_WIDTH -1:
-                        square_r = self.get_square(x+1, y)
-                        if square.get_label() == square_r.get_label(): 
-                            squares_to_delete.extend([square, square_r])
-                    # 下端の場合以外
-                    if y!= FIELD_HEIGHT-1:
-                        square_up = self.get_square(x, y+1)
-                        if square.get_label() == square_up.get_label(): 
-                            squares_to_delete.extend([square, square_up])
 
+            squares_to_delete = self.get_deletable_block()
             if len(squares_to_delete) == 0:
                 break
             else:
                 # ブロックの消去
                 for square in set(squares_to_delete):
-                    square.set_color(base_color)    
-                    square.set_label(base_label) 
+                    square.set_color(base_color)
+                    square.set_label(base_label)
                 self.down_after_fix()
 
     def operate_gate(self, operator_square, target_squares):
+        "与えられたゲート"
         if operator_square.get_label() == "H":
-            # 0 <-> +,  1 <-> - 
+            # 0 <-> +,  1 <-> -
             qstate_transition_dict = {"0": "+", "1": "-", "+": "0", "-": "1"}
         elif operator_square.get_label() == "X":
             # 0 <-> 1
             qstate_transition_dict = {"0": "1", "1": "0", "+": "+", "-": "-"}
         elif operator_square.get_label() == "Z":
             qstate_transition_dict = {"0": "0", "1": "1", "+": "-", "-": "+"}
-            
-        for square in target_squares:             
+
+        for square in target_squares:
             new_qstate = qstate_transition_dict[square.get_label()]
             new_color = label_color_dict[new_qstate]
             square.set_label(new_qstate)
-            square.set_color(new_color)        
+            square.set_color(new_color)
 
         operator_square.set_color(base_color)
-        operator_square.set_label(base_label)     
+        operator_square.set_label(base_label)
 
     def get_operator_target(self):
+        "ゲートの位置と種類を取得"
         operator_target_dict = {}
         for y in range(self.height):
             for x in range(self.width):
                 opperands = []
-                square = self.get_square(x, y)                
+                square = self.get_square(x, y)
                 if square.get_label() not in opperator_labels:
                     continue
                 # 行列演算は順序があるため左右上下を確認する必要あり
                 # 左端の場合以外、左側に量子状態ブロックがあるかチェック
                 if x != 0:
-                    square_l = self.get_square(x-1, y)
+                    square_l = self.get_square(x - 1, y)
                     if square_l.get_label() in opperand_labels:
                         opperands.append(square_l)
                 # 右端の場合以外、右側に量子状態ブロックがあるかチェック
-                if x != FIELD_WIDTH -1:
-                    square_r = self.get_square(x+1, y)
+                if x != FIELD_WIDTH - 1:
+                    square_r = self.get_square(x + 1, y)
                     if square_r.get_label() in opperand_labels:
                         opperands.append(square_r)
-                 # 上端の場合以外、上側に量子状態ブロックがあるかチェック
-                if y!= 0:
-                    square_down = self.get_square(x, y-1)
+                # 上端の場合以外、上側に量子状態ブロックがあるかチェック
+                if y != 0:
+                    square_down = self.get_square(x, y - 1)
                     if square_down.get_label() in opperand_labels:
                         opperands.append(square_down)
                 # 下端の場合以外、下側に量子状態ブロックがあるかチェック
-                if y!= FIELD_HEIGHT-1:
-                    square_up = self.get_square(x, y+1)
+                if y != FIELD_HEIGHT - 1:
+                    square_up = self.get_square(x, y + 1)
                     if square_up.get_label() in opperand_labels:
                         opperands.append(square_up)
                 operator_target_dict[square] = opperands
 
         return operator_target_dict
 
-
     def operate_all_gates(self):
+        "ゲート処理を実行"
         for operator, opperands in self.get_operator_target().items():
             self.operate_gate(operator, opperands)
+
+    def gate_exist(self):
+        "フィールド上にゲートブロックが存在するか"
+        return len(self.get_operator_target()) > 0
 
     def print_bottom_two_line(self):
         for y in range(self.height)[-2:]:
             for x in range(self.width):
-                print(x,y, self.get_square(x, y).get_color(), self.get_square(x, y).get_label())
+                print(
+                    x,
+                    y,
+                    self.get_square(x, y).get_color(),
+                    self.get_square(x, y).get_label(),
+                )
         print()
 
-                
+
 # テトリスのブロックのクラス
-class TetrisBlock():
+class TetrisBlock:
     def __init__(self):
-        'テトリスのブロックを作成'
+        "テトリスのブロックを作成"
 
         # ブロックを構成する正方形のリスト
         self.squares = []
 
         # ブロックの形をランダムに決定
         block_type = random.randint(1, 8)
-        
+
         # 乱数に応じた量子状態の色の設定
         # color_dict = {1:"red", 2:"blue", 3: "green", 4:"orange", 5:"black", 6:"pink"}
-        label_dict = {1:"0", 2:"1", 3: "+", 4:"-", 5:"i", 6:"-i"}
+        label_dict = {1: "0", 2: "1", 3: "+", 4: "-", 5: "i", 6: "-i"}
 
         # 乱数に応じたゲート色の設定
-        gate_label_dict = {1:"H", 2:"X", 3:"Z"}   
+        gate_label_dict = {1: "H", 2: "X", 3: "Z"}
         gate_color_dict = {"H": "#70B7EB", "X": "#58C698", "Z": "#58C698"}
 
-
         # ブロックの中身を決定
-        
-        if block_type <=4: # 量子状態を生成
+
+        if block_type <= 4:  # 量子状態を生成
             # block_info = random.choices(range(1,5),k=4) # 重複あり
-            block_info = random.sample(range(1,5),4) # 重複なし
-            block_labels =  [label_dict[i] for i in block_info]     
+            block_info = random.sample(range(1, 5), 4)  # 重複なし
+            block_labels = [label_dict[i] for i in block_info]
             colors = [label_color_dict[label] for label in block_labels]
 
-        elif block_type > 4: #量子ゲートを生成
-            block_info = random.choices(range(1,4), k=4)
-            block_labels =  [gate_label_dict[i] for i in block_info] 
+        elif block_type > 4:  # 量子ゲートを生成
+            block_info = random.choices(range(1, 4), k=4)
+            block_labels = [gate_label_dict[i] for i in block_info]
             colors = [gate_color_dict[label] for label in block_labels]
 
-        
         # ブロックの形に応じて４つの正方形の座標と色を決定
         if block_type == 1:
             # 縦棒を生成
@@ -498,7 +597,7 @@ class TetrisBlock():
                 [FIELD_WIDTH / 2 - 1, 0],
                 [FIELD_WIDTH / 2, 0],
                 [FIELD_WIDTH / 2 + 1, 0],
-                [FIELD_WIDTH / 2 +2, 0],
+                [FIELD_WIDTH / 2 + 2, 0],
             ]
         elif block_type == 6:
             # 正方形を生成
@@ -511,43 +610,45 @@ class TetrisBlock():
         elif block_type == 7:
             #  横棒+右 を生成
             cords = [
-                [FIELD_WIDTH / 2 -1, 0],
+                [FIELD_WIDTH / 2 - 1, 0],
                 [FIELD_WIDTH / 2, 0],
-                [FIELD_WIDTH / 2 +1, 0],
-                [FIELD_WIDTH / 2 +1, 1],
+                [FIELD_WIDTH / 2 + 1, 0],
+                [FIELD_WIDTH / 2 + 1, 1],
             ]
         elif block_type == 8:
             # 縦棒+左を生成
             cords = [
-                [FIELD_WIDTH / 2 -1, 0],
+                [FIELD_WIDTH / 2 - 1, 0],
                 [FIELD_WIDTH / 2, 0],
-                [FIELD_WIDTH / 2 +1, 0],
-                [FIELD_WIDTH / 2 -1, 1],
+                [FIELD_WIDTH / 2 + 1, 0],
+                [FIELD_WIDTH / 2 - 1, 1],
             ]
 
         # 決定した色と座標の正方形を作成してリストに追加
         for i, cord in enumerate(cords):
-            self.squares.append(TetrisSquare(cord[0], cord[1], colors[i], block_labels[i]))
+            self.squares.append(
+                TetrisSquare(cord[0], cord[1], colors[i], block_labels[i])
+            )
 
     def get_squares(self):
-        'ブロックを構成する正方形を取得'
+        "ブロックを構成する正方形を取得"
 
         # return [square for square in self.squares]
         return self.squares
 
     def move(self, direction):
-        'ブロックを移動'
+        "ブロックを移動"
 
         # ブロックを構成する正方形を移動
         for square in self.squares:
             x, y = square.get_moved_cord(direction)
             square.set_cord(x, y)
 
-# テトリスゲームを制御するクラス
-class TetrisGame():
 
+# テトリスゲームを制御するクラス
+class TetrisGame:
     def __init__(self, master):
-        'テトリスのインスタンス作成'
+        "テトリスのインスタンス作成"
 
         # ブロック管理リストを初期化
         self.field = TetrisField()
@@ -561,8 +662,10 @@ class TetrisGame():
         # テトリス画面アップデート
         self.canvas.update(self.field, self.block)
 
+        self.cnt_tmp = 0
+
     def start(self, func):
-        'テトリスを開始'
+        "テトリスを開始"
 
         # 終了時に呼び出す関数をセット
         self.end_func = func
@@ -574,7 +677,7 @@ class TetrisGame():
         self.new_block()
 
     def new_block(self):
-        'ブロックを新規追加'
+        "ブロックを新規追加"
 
         # 落下中のブロックインスタンスを作成
         self.block = TetrisBlock()
@@ -587,8 +690,10 @@ class TetrisGame():
         self.canvas.update(self.field, self.block)
 
     def move_block(self, direction):
-        'ブロックを移動'
+        "ブロックを移動"
 
+        if self.block is None:
+            return
         # 移動できる場合だけ移動する
         if self.field.judge_can_move(self.block, direction):
 
@@ -604,19 +709,21 @@ class TetrisGame():
                 # ブロックを固定する
                 self.field.fix_block(self.block)
                 # self.field.delete_line()
-                self.field.down_after_fix()
+                # self.field.down_after_fix()
                 # self.canvas.update(self.field, self.block)
                 # time.sleep(0.5)
                 # self.field.fix_block(self.block)
                 # self.canvas.update(self.field, self.block)
                 # time.sleep(0.5)
-                self.field.operate_all_gates()
-                self.field.delete_same()
+                # self.field.operate_all_gates()
+                # self.field.delete_same()
                 # self.field.print_bottom_two_line()
-                self.new_block()
+                # self.new_block()
+                self.block = None
+
 
 # イベントを受け付けてそのイベントに応じてテトリスを制御するクラス
-class EventHandller():
+class EventHandller:
     def __init__(self, master, game):
         self.master = master
 
@@ -627,11 +734,11 @@ class EventHandller():
         self.timer = None
 
         # ゲームスタートボタンを設置
-        button = tk.Button(master, text='START', command=self.start_event)
+        button = tk.Button(master, text="START", command=self.start_event)
         button.place(x=25 + BLOCK_SIZE * FIELD_WIDTH + 25, y=30)
 
     def start_event(self):
-        'ゲームスタートボタンを押された時の処理'
+        "ゲームスタートボタンを押された時の処理"
 
         # テトリス開始
         self.game.start(self.end_event)
@@ -646,7 +753,7 @@ class EventHandller():
         self.master.bind("<Down>", self.down_key_event)
 
     def end_event(self):
-        'ゲーム終了時の処理'
+        "ゲーム終了時の処理"
         self.running = False
 
         # イベント受付を停止
@@ -656,15 +763,14 @@ class EventHandller():
         self.master.unbind("<Down>")
 
     def timer_end(self):
-        'タイマーを終了'
+        "タイマーを終了"
 
         if self.timer is not None:
             self.master.after_cancel(self.timer)
             self.timer = None
 
-    def timer_start(self):
-        'タイマーを開始'
-
+    def timer_start(self, wait_time=1000):
+        "タイマーを開始"
         if self.timer is not None:
             # タイマーを一旦キャンセル
             self.master.after_cancel(self.timer)
@@ -672,34 +778,76 @@ class EventHandller():
         # テトリス実行中の場合のみタイマー開始
         if self.running:
             # タイマーを開始
-            self.timer = self.master.after(1000, self.timer_event)
+            self.timer = self.master.after(wait_time, self.timer_event)
 
     def left_key_event(self, event):
-        '左キー入力受付時の処理'
+        "左キー入力受付時の処理"
 
         # ブロックを左に動かす
         self.game.move_block(MOVE_LEFT)
 
     def right_key_event(self, event):
-        '右キー入力受付時の処理'
+        "右キー入力受付時の処理"
 
         # ブロックを右に動かす
         self.game.move_block(MOVE_RIGHT)
 
     def down_key_event(self, event):
-        '下キー入力受付時の処理'
+        "下キー入力受付時の処理"
 
         # ブロックを下に動かす
         self.game.move_block(MOVE_DOWN)
-
         # 落下タイマーを再スタート
         self.timer_start()
+        # if (
+        #     self.game.field.judge_can_move(self.game.block, MOVE_DOWN)
+        #     or self.game.cnt_tmp == 3
+        # ):
+        #     self.game.move_block(MOVE_DOWN)
+        #     self.game.cnt_tmp = 0
+        # else:
+        #     self.game.field.down_after_fix()
+        #     self.game.canvas.update(self.game.field, None)
+        #     self.game.cnt_tmp += 1
+
+    def update_screen(self, event):
+        "画面更新のパターンを判定"
+
+        # ブロック落下中の処理
+        if self.game.block is not None:
+            self.game.move_block(MOVE_DOWN)
+            self.timer_start()
+
+        # ブロック落下後の処理
+        elif self.game.field.judge_can_fall():
+            self.game.field.down_after_fix()
+            self.game.canvas.update(self.game.field, None)
+            self.timer_start(500)
+        # ゲートブロックの存在を確認
+        elif self.game.field.gate_exist():
+            self.game.field.operate_all_gates()
+            self.game.canvas.update(self.game.field, None)
+            self.timer_start(500)
+        elif self.game.field.exist_deletale():
+            self.game.field.delete_same_step()
+            self.game.canvas.update(self.game.field, None)
+            self.timer_start(500)
+        else:
+            self.game.new_block()
+            self.timer_start(200)
+        # if (self.game.block is not None) and self.game.field.judge_can_move(
+        #     self.game.block, MOVE_DOWN
+        # ):
+        #     print("patter 1: down")
+        # elif self.judge_can_fall():
+        #     print("patter 2: decompose")
 
     def timer_event(self):
-        'タイマー満期になった時の処理'
+        "タイマー満期になった時の処理"
 
         # 下キー入力受付時と同じ処理を実行
-        self.down_key_event(None)
+        # self.down_key_event(None)
+        self.update_screen(None)
 
 
 class Application(tk.Tk):
@@ -718,7 +866,7 @@ class Application(tk.Tk):
 
 
 def main():
-    'main関数'
+    "main関数"
 
     # GUIアプリ生成
     app = Application()
