@@ -9,12 +9,12 @@
 #         Up - Rotate Stone clockwise
 #     Escape - Quit game
 #          P - Pause game
+#          O - Display board while pausing
 #     Return - Instant drop
 #
 # Have fun!
 
 import sys
-import time
 from random import randrange as rand
 
 import pygame
@@ -27,15 +27,15 @@ maxfps = 30
 cluster_thold = 3
 
 colors = [
-    "#B5B5B5",  # (0, 0, 0),  # black
-    "#F7D04C",  # (255, 85, 85),  # red
-    "#F69E53",  # (100, 200, 115),  # green
-    "#FF747A",  # (120, 108, 245),  # blue
-    "#4695D6",  # (255, 140, 50),  # orange
-    "#46CFE4",  # (50, 120, 52),  # green(dark)
-    "#8ADAC0",  # (146, 202, 73),  # green
-    "#F0B4DC",  # (150, 161, 218),  # blue(light)
-    "#DEDEDE",  # (35, 35, 35),  # Helper color for background grid # gray
+    "#B5B5B5",  # dark gray [background 1]
+    "#F7D04C",  # yellow [0 state]
+    "#F69E53",  # orange [1 state]
+    "#FF747A",  # red [+ state]
+    "#4695D6",  # blue [- state]
+    "#46CFE4",  # light blue [H gate]
+    "#8ADAC0",  # light green [Z gate]
+    "#F0B4DC",  # light pink [X gate]
+    "#DEDEDE",  # light gray [background 2]
 ]
 
 # Define the shapes of the single parts
@@ -48,17 +48,9 @@ tetris_shapes = [
     [[1, 1, 1, 1]],
     [[1, 1], [1, 1]],
 ]
-# tetris_shapes = [
-#     [[1, 1, 1], [0, 1, 0]],
-#     [[0, 2, 2], [2, 2, 0]],
-#     [[3, 3, 0], [0, 3, 3]],
-#     [[4, 0, 0], [4, 4, 4]],
-#     [[0, 0, 5], [5, 5, 5]],
-#     [[6, 6, 6, 6]],
-#     [[7, 7], [7, 7]],
-# ]
 
 labels_dict = {
+    0: None,
     1: "0",
     2: "1",
     3: "+",
@@ -68,8 +60,8 @@ labels_dict = {
     7: "X",
 }
 
+opperand_labels = ["0", "1", "+", "-"]
 opperator_labels = ["H", "Z", "X"]
-
 labels_dict_inv = {v: k for k, v in labels_dict.items()}
 
 
@@ -90,107 +82,6 @@ def check_collision(board, shape, offset):
             except IndexError:
                 return True
     return False
-
-
-def remove_row(board, row):
-    del board[row]
-    return [[0 for i in range(cols)]] + board
-
-
-def find_idential_adjacent(board, x, y):
-    """対象の座標(x,y)の隣接に同一ブロックがないかをチェック
-    クラスター候補となる座標のsetを出力"""
-    set_cluster_xy = {(x, y)}
-    while True:
-        pre_set_cluster_xy = set_cluster_xy.copy()
-        for xx, yy in pre_set_cluster_xy:
-            # 左端の場合以外で左側のブロック比較
-            if (xx != 0) and (board[yy][xx] == board[yy][xx - 1]):
-                set_cluster_xy.add((xx - 1, yy))
-            # 右端の場合以外で右側のブロック比較
-            if (xx != cols - 1) and (board[yy][xx] == board[yy][xx + 1]):
-                set_cluster_xy.add((xx + 1, yy))
-            # 上端の場合以外で上側のブロック比較
-            if (yy != 0) and (board[yy][xx] == board[yy - 1][xx]):
-                set_cluster_xy.add((xx, yy - 1))
-            # 下端の場合以外で下側のブロック比較
-            if (yy != rows - 1) and (board[yy][xx] == board[yy + 1][xx]):
-                set_cluster_xy.add((xx, yy + 1))
-        if len(pre_set_cluster_xy) == len(set_cluster_xy):
-            break
-
-    return set_cluster_xy
-
-
-def find_cluster(board, threthold=cluster_thold):
-    """cluster_tholdをクラスター判定の基準とし、同一ブロックが隣接した全座標setを出力"""
-    clusters_cordinates = set()
-    for x in range(cols):
-        for y in range(rows):
-            if (board[y][x] == 0) or ((x, y) in clusters_cordinates):
-                continue
-            else:
-                cluster_candidate = find_idential_adjacent(board, x, y)
-                if len(cluster_candidate) >= threthold:
-                    clusters_cordinates.update(cluster_candidate)
-    return clusters_cordinates
-
-
-def delete_clusters(board, clusters):
-    """クラスターを削除"""
-    for x, y in clusters:
-        board[y][x] = 0
-    return board
-
-
-def operate_gate(board, operator, target):
-    "targetブロックにoperatorを作用"
-    # operator: ()
-    operator_x, operator_y, gate_type = operator
-    target_x, target_y, qstate_pre = target
-
-    if labels_dict[gate_type] == "H":
-        qstate_transition_dict = {"0": "+", "1": "-", "+": "0", "-": "1"}
-    elif labels_dict[gate_type] == "X":
-        # 0 <-> 1
-        qstate_transition_dict = {"0": "1", "1": "0", "+": "+", "-": "-"}
-    elif labels_dict[gate_type] == "Z":
-        qstate_transition_dict = {"0": "0", "1": "1", "+": "-", "-": "+"}
-
-    # targetの量子状態を更新
-    q_state_post = qstate_transition_dict[labels_dict[qstate_pre]]
-    board[target_y][target_x] = labels_dict_inv[q_state_post]
-    # ゲートブロックの削除
-    board[operator_y][operator_x] = 0
-
-    return board
-
-
-def get_operator_target(board):
-    "ゲートの(位置,種類)とターゲットの(位置,種類)ペアを取得"
-    # ゲートの真下のみ作用する仕様へ変更
-    operator_target_dict = {}
-    for y in range(rows):
-        for x in range(cols):
-            if labels_dict[board[y][x]] not in opperator_labels:
-                continue
-            # if
-
-
-def settle_board(board):
-    """クラスター削除後に浮いたブロックを落下"""
-    for x in range(cols):
-        for y in range(rows - 2, 0, -1):
-            if board[y][x] == 0:
-                continue
-            # ブロックの下にスペースがあれば落としていく
-            for down_y in range(y + 1, rows):
-                if board[down_y][x] == 0:
-                    board[down_y][x] = board[down_y - 1][x]
-                    board[down_y - 1][x] = 0
-                else:
-                    break
-    return board
 
 
 def join_matrixes(mat1, mat2, mat2_off):
@@ -221,10 +112,8 @@ class TetrisApp(object):
         self.default_font = pygame.font.Font(pygame.font.get_default_font(), 12)
         self.screen = pygame.display.set_mode((self.width, self.height))
 
-        pygame.event.set_blocked(pygame.MOUSEMOTION)  # We do not need
-        # mouse movement
-        # events, so we
-        # block them.
+        # We do not need mouse movement  events, so we block them.
+        pygame.event.set_blocked(pygame.MOUSEMOTION)
         self.next_stone = tetris_shapes[rand(len(tetris_shapes))]
         self.next_stone = [
             [rand(1, +len(tetris_shapes) + 1) if i != 0 else 0 for i in col]
@@ -245,8 +134,6 @@ class TetrisApp(object):
 
         if check_collision(self.board, self.stone, (self.stone_x, self.stone_y)):
             self.gameover = True
-        print(self.stone)
-        print(self.board)
 
     def init_game(self):
         self.board = new_board()
@@ -282,6 +169,134 @@ class TetrisApp(object):
                     self.height // 2 - msgim_center_y + i * 22,
                 ),
             )
+
+    def judge_can_settle(self, board):
+        "ボード上の全ブロックのうちいずれかが下に移動できるか判定"
+        can_fall = False
+        for y in range(rows - 2, 0, -1):
+            for x in range(cols):
+                if (board[y][x] != 0) and (board[y + 1][x] == 0):
+                    can_fall = True
+                    break
+        return can_fall
+
+    def settle_board(self, board):
+        """クラスター削除後に浮いたブロックを落下"""
+        for x in range(cols):
+            for y in range(rows - 2, 0, -1):
+                if board[y][x] == 0:
+                    continue
+                # ブロックの下にスペースがあれば落としていく
+                for down_y in range(y + 1, rows):
+                    if board[down_y][x] == 0:
+                        board[down_y][x] = board[down_y - 1][x]
+                        board[down_y - 1][x] = 0
+                    else:
+                        break
+        return board
+
+    def get_operator_target(self, board):
+        "ゲートの(位置,種類)とターゲットの(位置,種類)ペアを取得"
+        # ゲートの真下のみ作用する仕様へ変更
+        operator_target_dict = {}
+        for y in range(rows):
+            for x in range(cols):
+                gate_type = labels_dict[board[y][x]]
+                if gate_type not in opperator_labels:
+                    continue
+                # ゲートの下側のみ作用する場合はリストサイズ1 (現行の挙動),
+                # 左右にも作用する場合は最大リストサイズ3 (将来の拡張用)
+                operands = []
+                # 下端の場合以外、下側に量子状態ブロックがあるかチェック
+                if y != rows - 1:
+                    qstate = labels_dict[board[y + 1][x]]
+                    if qstate in opperand_labels:
+                        operands.append((x, y + 1, qstate))
+                # 下端に接したゲートと量子状態に接したゲートは削除対象
+                if (y == rows - 1) or (len(operands) > 0):
+                    operator_target_dict[(x, y, gate_type)] = operands
+
+        return operator_target_dict
+
+    def gate_exist(self, board):
+        "フィールド上にゲートブロックが存在するか"
+        return len(self.get_operator_target(board)) > 0
+
+    def operate_gate(self, board, operator, targets):
+        "targetブロックにoperatorを作用"
+        # operator: ()
+        operator_x, operator_y, gate_type = operator
+
+        if gate_type == "H":
+            qstate_transition_dict = {"0": "+", "1": "-", "+": "0", "-": "1"}
+        elif gate_type == "X":
+            # 0 <-> 1
+            qstate_transition_dict = {"0": "1", "1": "0", "+": "+", "-": "-"}
+        elif gate_type == "Z":
+            qstate_transition_dict = {"0": "0", "1": "1", "+": "-", "-": "+"}
+
+        for target in targets:
+            target_x, target_y, qstate_pre = target
+            # targetの量子状態を更新
+            qstate_post = qstate_transition_dict[qstate_pre]
+            board[target_y][target_x] = labels_dict_inv[qstate_post]
+
+        # ゲートブロックの削除
+        board[operator_y][operator_x] = 0
+
+        return board
+
+    def operate_all_gates(self, board):
+        "ゲート処理を実行"
+        print(self.get_operator_target(board))
+        for operator, opperands in self.get_operator_target(board).items():
+            print(operator, opperands)
+            self.operate_gate(board, operator, opperands)
+        return board
+
+    def find_idential_adjacent(self, board, x, y):
+        """対象の座標(x,y)の隣接に同一ブロックがないかをチェック
+        クラスター候補となる座標のsetを出力"""
+        set_cluster_xy = {(x, y)}
+        while True:
+            pre_set_cluster_xy = set_cluster_xy.copy()
+            for xx, yy in pre_set_cluster_xy:
+                # 左端の場合以外で左側のブロック比較
+                if (xx != 0) and (board[yy][xx] == board[yy][xx - 1]):
+                    set_cluster_xy.add((xx - 1, yy))
+                # 右端の場合以外で右側のブロック比較
+                if (xx != cols - 1) and (board[yy][xx] == board[yy][xx + 1]):
+                    set_cluster_xy.add((xx + 1, yy))
+                # 上端の場合以外で上側のブロック比較
+                if (yy != 0) and (board[yy][xx] == board[yy - 1][xx]):
+                    set_cluster_xy.add((xx, yy - 1))
+                # 下端の場合以外で下側のブロック比較
+                if (yy != rows - 1) and (board[yy][xx] == board[yy + 1][xx]):
+                    set_cluster_xy.add((xx, yy + 1))
+            if len(pre_set_cluster_xy) == len(set_cluster_xy):
+                break
+
+        return set_cluster_xy
+
+    def find_cluster(self, board, threthold=cluster_thold):
+        """cluster_tholdをクラスター判定の基準とし、同一ブロックが隣接した全座標setを出力"""
+        clusters_cordinates = set()
+        for x in range(cols):
+            for y in range(rows):
+                if (board[y][x] == 0) or ((x, y) in clusters_cordinates):
+                    continue
+                else:
+                    cluster_candidate = self.find_idential_adjacent(board, x, y)
+                    if len(cluster_candidate) >= threthold:
+                        clusters_cordinates.update(cluster_candidate)
+        return clusters_cordinates
+
+    def delete_clusters(self, board, clusters):
+        """クラスターを削除"""
+        for x, y in clusters:
+            board[y][x] = 0
+            self.add_cl_clusters(1)
+        return board
 
     def draw_matrix(self, matrix, offset):
         off_x, off_y = offset
@@ -325,14 +340,26 @@ class TetrisApp(object):
                     #     ((off_x + x) * cell_size, (off_y + y) * cell_size),
                     # )
 
-    def update_matrix(self):
+    def update_matrix(self, show_stone=False, wait=True, update_score=False):
+        "連鎖反応時の逐次画面更新"
         self.draw_matrix(self.bground_grid, (0, 0))
         self.draw_matrix(self.board, (0, 0))
-        self.draw_matrix(self.stone, (self.stone_x, self.stone_y))
         self.draw_matrix(self.next_stone, (cols + 1, 2))
-        pygame.display.update()
+        if show_stone:
+            self.draw_matrix(self.stone, (self.stone_x, self.stone_y))
 
-    def add_cl_lines(self, n):
+        if update_score:
+            self.disp_msg(
+                "Score: %d\n\nLevel: %d\nDeleted: %d"
+                % (self.score, self.level, self.lines),
+                (self.rlim + cell_size, cell_size * 5),
+            )
+        pygame.display.update()
+        if wait:
+            pygame.time.wait(300)
+            pygame.event.clear()
+
+    def add_cl_clusters(self, n):
         linescores = [0, 40, 100, 300, 1200]
         self.lines += n
         self.score += linescores[n] * self.level
@@ -366,6 +393,7 @@ class TetrisApp(object):
                     self.board, self.stone, (self.stone_x, self.stone_y)
                 )
                 self.new_stone()
+                self.board_updating = True
                 cleared_rows = 0
                 # clusters = find_cluster(self.board)
                 # while len(clusters) > 0:
@@ -385,7 +413,7 @@ class TetrisApp(object):
                 #             break
                 #     else:
                 #         break
-                self.add_cl_lines(cleared_rows)
+                self.add_cl_clusters(cleared_rows)
                 return True
         return False
 
@@ -427,6 +455,8 @@ class TetrisApp(object):
         self.gameover = False
         self.paused = False
         self.paused_display = False
+        self.board_updating = False
+        self.max_chain = 0
 
         dont_burn_my_cpu = pygame.time.Clock()
         while 1:
@@ -449,56 +479,40 @@ class TetrisApp(object):
                     )
                     self.disp_msg("Next:", (self.rlim + cell_size, 2))
                     self.disp_msg(
-                        "Score: %d\n\nLevel: %d\nDeleted: %d"
-                        % (self.score, self.level, self.lines),
+                        "Score: %d\n\nLevel: %d\nDeleted: %d\nMax Chain: %d"
+                        % (self.score, self.level, self.lines, self.max_chain),
                         (self.rlim + cell_size, cell_size * 5),
                     )
                 if self.paused_display or not self.paused:
 
-                    # self.draw_matrix(self.bground_grid, (0, 0))
-                    # self.draw_matrix(self.board, (0, 0))
-                    # self.draw_matrix(self.stone, (self.stone_x, self.stone_y))
-                    # self.draw_matrix(self.next_stone, (cols + 1, 2))
+                    # 落下中のストーンがボードの一部となった時にwhileループが始動
+                    chain = 0
+                    while self.board_updating:
+                        self.update_matrix(show_stone=False, wait=True)
+                        # ブロック落下の処理
+                        if self.judge_can_settle(self.board):
+                            self.board = self.settle_board(self.board)
+                            self.update_matrix(show_stone=False, wait=True)
+                        # ゲートブロックの存在を確認
+                        elif self.gate_exist(self.board):
+                            self.board = self.operate_all_gates(self.board)
+                            self.update_matrix(show_stone=False, wait=True)
+                        # 同じブロックが隣接しているクラスターの存在を確認
+                        elif len(self.find_cluster(self.board)) > 0:
+                            clusters = self.find_cluster(self.board)
+                            self.board = self.delete_clusters(self.board, clusters)
+                            chain += 1
+                            self.max_chain = max(self.max_chain, chain)
+                            self.update_matrix(
+                                show_stone=False, wait=True, update_score=True
+                            )
+                        # ボードの更新が終わったら次のブロックを表示
+                        else:
+                            self.board_updating = False
+                            self.update_matrix(show_stone=True, wait=False)
+                            break
 
-                    clusters = find_cluster(self.board)
-                    while len(clusters) > 0:
-                        self.draw_matrix(self.bground_grid, (0, 0))
-                        self.draw_matrix(self.board, (0, 0))
-                        self.draw_matrix(self.next_stone, (cols + 1, 2))
-                        pygame.display.update()
-                        pygame.time.delay(1)
-
-                        time.sleep(1)
-
-                        self.board = delete_clusters(self.board, clusters)
-                        # self.update_matrix()
-
-                        self.screen.fill((0, 0, 0))
-                        self.draw_matrix(self.bground_grid, (0, 0))
-                        pygame.display.update()
-
-                        self.draw_matrix(self.bground_grid, (0, 0))
-                        self.draw_matrix(self.board, (0, 0))
-                        self.draw_matrix(self.next_stone, (cols + 1, 2))
-                        pygame.display.update()
-                        pygame.time.delay(1)
-                        time.sleep(1)
-
-                        self.board = settle_board(self.board)
-                        clusters = find_cluster(self.board)
-
-                        # self.update_matrix()
-
-                        self.draw_matrix(self.bground_grid, (0, 0))
-                        self.draw_matrix(self.board, (0, 0))
-                        self.draw_matrix(self.next_stone, (cols + 1, 2))
-                        pygame.display.update()
-                        pygame.time.delay(1)
-                        # time.sleep(1)
-
-                        pygame.event.clear()
-                    else:
-                        self.update_matrix()
+                    self.update_matrix(show_stone=True, wait=False)
 
             pygame.display.update()
             # print(len(pygame.event.get()))
