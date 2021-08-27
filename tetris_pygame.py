@@ -35,7 +35,7 @@ colors = [
     "#46CFE4",  # light blue [H gate]
     "#8ADAC0",  # light green [Z gate]
     "#F0B4DC",  # light pink [X gate]
-    "#DEDEDE",  # light gray [background 2]
+    "#B5B5B5",  # "#DEDEDE",  # light gray [background 2]
 ]
 
 # Define the shapes of the single parts
@@ -321,7 +321,19 @@ class TetrisApp(object):
                         cell_size,
                         cell_size,
                     ),
-                    0,
+                    0,  # ここを4にしたら枠線になる
+                )
+
+                pygame.draw.rect(
+                    self.screen,
+                    (100, 100, 100),
+                    pygame.Rect(
+                        (off_x + x) * cell_size,
+                        (off_y + y) * cell_size,
+                        cell_size,
+                        cell_size,
+                    ),
+                    1,  # ここを4にしたら枠線になる
                 )
 
                 if val in labels_dict:
@@ -362,7 +374,7 @@ class TetrisApp(object):
     def add_cl_clusters(self, n):
         linescores = [0, 40, 100, 300, 1200]
         self.lines += n
-        self.score += linescores[n] * self.level
+        self.score += n * self.level
         if self.lines >= self.level * 6:
             self.level += 1
             newdelay = 1000 - 50 * (self.level - 1)
@@ -470,19 +482,19 @@ class TetrisApp(object):
                 if self.paused:
                     if not self.paused_display:
                         self.center_msg("Paused")
-                else:
-                    pygame.draw.line(
-                        self.screen,
-                        (255, 255, 255),
-                        (self.rlim + 1, 0),
-                        (self.rlim + 1, self.height - 1),
-                    )
-                    self.disp_msg("Next:", (self.rlim + cell_size, 2))
-                    self.disp_msg(
-                        "Score: %d\n\nLevel: %d\nDeleted: %d\nMax Chain: %d"
-                        % (self.score, self.level, self.lines, self.max_chain),
-                        (self.rlim + cell_size, cell_size * 5),
-                    )
+                # else:
+                pygame.draw.line(
+                    self.screen,
+                    (255, 255, 255),
+                    (self.rlim + 1, 0),
+                    (self.rlim + 1, self.height - 1),
+                )
+                self.disp_msg("Next:", (self.rlim + cell_size, 2))
+                self.disp_msg(
+                    "Score: %d\n\nLevel: %d\nDeleted: %d\nMax Chain: %d"
+                    % (self.score, self.level, self.lines, self.max_chain),
+                    (self.rlim + cell_size, cell_size * 5),
+                )
                 if self.paused_display or not self.paused:
 
                     # 落下中のストーンがボードの一部となった時にwhileループが始動
