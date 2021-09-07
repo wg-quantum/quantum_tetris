@@ -109,7 +109,7 @@ class TetrisApp(object):
             [8 if x % 2 == y % 2 else 0 for x in range(cols)] for y in range(rows)
         ]
 
-        self.default_font = pygame.font.Font(pygame.font.get_default_font(), 12)
+        self.default_font = pygame.font.SysFont("arial", 12)
         self.screen = pygame.display.set_mode((self.width, self.height))
 
         # We do not need mouse movement  events, so we block them.
@@ -248,9 +248,7 @@ class TetrisApp(object):
 
     def operate_all_gates(self, board):
         "ゲート処理を実行"
-        print(self.get_operator_target(board))
         for operator, opperands in self.get_operator_target(board).items():
-            print(operator, opperands)
             self.operate_gate(board, operator, opperands)
         return board
 
@@ -306,8 +304,6 @@ class TetrisApp(object):
                 if val != 0:
                     val_rec = val
                 elif (val == 0) and (off_x < cols):
-                    # print(off_y, off_x)
-                    # print([off_y + y], [off_x + x])
                     val_rec = self.bground_grid[off_y + y][off_x + x]
                 else:
                     continue
@@ -372,7 +368,6 @@ class TetrisApp(object):
             pygame.event.clear()
 
     def add_cl_clusters(self, n):
-        linescores = [0, 40, 100, 300, 1200]
         self.lines += n
         self.score += n * self.level
         if self.lines >= self.level * 6:
@@ -407,24 +402,7 @@ class TetrisApp(object):
                 self.new_stone()
                 self.board_updating = True
                 cleared_rows = 0
-                # clusters = find_cluster(self.board)
-                # while len(clusters) > 0:
-                #     self.board = delete_clusters(self.board, clusters)
-                #     self.board = settle_board(self.board)
-                #     clusters = find_cluster(self.board)
-                #     cleared_rows += 1
 
-                # while True:
-                #     for i, row in enumerate(self.board[:-1]):
-                #         if 0 not in row:
-                #             print(self.board)
-                #             print(find_cluster(self.board))
-                #             self.board = remove_row(self.board, i)
-                #             print(self.board)
-                #             cleared_rows += 1
-                #             break
-                #     else:
-                #         break
                 self.add_cl_clusters(cleared_rows)
                 return True
         return False
@@ -443,9 +421,6 @@ class TetrisApp(object):
     def toggle_pause(self):
         self.paused = not self.paused
 
-    def toggle_pause_display(self):
-        self.paused_display = not self.paused_display
-
     def start_game(self):
         if self.gameover:
             self.init_game()
@@ -459,14 +434,13 @@ class TetrisApp(object):
             "DOWN": lambda: self.drop(True),
             "UP": self.rotate_stone,
             "p": self.toggle_pause,
-            "o": self.toggle_pause_display,
             "SPACE": self.start_game,
             "RETURN": self.insta_drop,
         }
 
         self.gameover = False
         self.paused = False
-        self.paused_display = False
+        # self.paused_display = False
         self.board_updating = False
         self.max_chain = 0
 
@@ -479,10 +453,6 @@ class TetrisApp(object):
                     % self.score
                 )
             else:
-                if self.paused:
-                    if not self.paused_display:
-                        self.center_msg("Paused")
-                # else:
                 pygame.draw.line(
                     self.screen,
                     (255, 255, 255),
@@ -495,36 +465,38 @@ class TetrisApp(object):
                     % (self.score, self.level, self.lines, self.max_chain),
                     (self.rlim + cell_size, cell_size * 5),
                 )
-                if self.paused_display or not self.paused:
-
-                    # 落下中のストーンがボードの一部となった時にwhileループが始動
-                    chain = 0
-                    while self.board_updating:
+                self.disp_msg(
+                    "Esc:   quit\nUp :   rotate\np   :   pause \nEnt:  drop",
+                    (self.rlim + cell_size, cell_size * 18),
+                )
+                # 落下中のストーンがボードの一部となった時にwhileループが始動
+                chain = 0
+                while self.board_updating:
+                    self.update_matrix(show_stone=False, wait=True)
+                    # ブロック落下の処理
+                    if self.judge_can_settle(self.board):
+                        self.board = self.settle_board(self.board)
                         self.update_matrix(show_stone=False, wait=True)
-                        # ブロック落下の処理
-                        if self.judge_can_settle(self.board):
-                            self.board = self.settle_board(self.board)
-                            self.update_matrix(show_stone=False, wait=True)
-                        # ゲートブロックの存在を確認
-                        elif self.gate_exist(self.board):
-                            self.board = self.operate_all_gates(self.board)
-                            self.update_matrix(show_stone=False, wait=True)
-                        # 同じブロックが隣接しているクラスターの存在を確認
-                        elif len(self.find_cluster(self.board)) > 0:
-                            clusters = self.find_cluster(self.board)
-                            self.board = self.delete_clusters(self.board, clusters)
-                            chain += 1
-                            self.max_chain = max(self.max_chain, chain)
-                            self.update_matrix(
-                                show_stone=False, wait=True, update_score=True
-                            )
-                        # ボードの更新が終わったら次のブロックを表示
-                        else:
-                            self.board_updating = False
-                            self.update_matrix(show_stone=True, wait=False)
-                            break
+                    # ゲートブロックの存在を確認
+                    elif self.gate_exist(self.board):
+                        self.board = self.operate_all_gates(self.board)
+                        self.update_matrix(show_stone=False, wait=True)
+                    # 同じブロックが隣接しているクラスターの存在を確認
+                    elif len(self.find_cluster(self.board)) > 0:
+                        clusters = self.find_cluster(self.board)
+                        self.board = self.delete_clusters(self.board, clusters)
+                        chain += 1
+                        self.max_chain = max(self.max_chain, chain)
+                        self.update_matrix(
+                            show_stone=False, wait=True, update_score=True
+                        )
+                    # ボードの更新が終わったら次のブロックを表示
+                    else:
+                        self.board_updating = False
+                        self.update_matrix(show_stone=True, wait=False)
+                        break
 
-                    self.update_matrix(show_stone=True, wait=False)
+                self.update_matrix(show_stone=True, wait=False)
 
             pygame.display.update()
             # print(len(pygame.event.get()))
