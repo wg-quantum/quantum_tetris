@@ -9,3 +9,6 @@ pip install pygame
 
 python tetris_pygame.py
 ```
+Contact：Yuma Nakamura (Yuma.Nakamura1@ibm.com)
+
+© Copyright IBM Corp. 2021
