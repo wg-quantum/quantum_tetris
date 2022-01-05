@@ -1,4 +1,5 @@
 # quantum_tetris
+![q_tetris_git1 (1)](https://user-images.githubusercontent.com/19603134/148189925-651522ec-06c7-4ef0-b34e-80e6263901d1.gif)
 
 ## Requirement
 python >=3.6
